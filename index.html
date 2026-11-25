@@ -187,12 +187,26 @@ small,.mut{color:var(--mut)}
 .row.end::before{content:'';position:absolute;left:10px;width:14px;height:14px;border-radius:50%;background:var(--c)}
 .walk{padding:6px 0 10px 44px;color:var(--mut)}
 
-/* Top-right Live Control */
+/* Top-right imhd.sk Zastávková tabuľa Button */
 #ctl{position:fixed;top:calc(10px + var(--safe-t));right:10px;z-index:1000;display:flex;gap:6px;align-items:center}
-#ctl button{background:var(--bg);box-shadow:var(--shadow)}
-#ctl button.on{border-color:var(--grn)}
-#livemsg{background:var(--foot-bg);padding:4px 8px;border-radius:8px;font-size:12px}
-#livemsg:empty{display:none}
+#imhdBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font:inherit;
+  font-weight:600;
+  color:var(--fg);
+  background:var(--bg);
+  border:1px solid var(--grn);
+  border-radius:9px;
+  padding:8px 12px;
+  min-height:38px;
+  text-decoration:none;
+  box-shadow:var(--shadow);
+  transition:background .15s,border-color .15s,color .15s;
+}
+#imhdBtn:hover{background:var(--bg-sub);border-color:var(--line-hover)}
+#imhdBtn svg{width:16px;height:16px;flex:none}
 
 /* Bottom-right Floating Stack (Theme Toggle + Leaflet Zoom) */
 .leaflet-bottom.leaflet-right{
@@ -299,10 +313,8 @@ html.light .tsw::after{transform:translateX(16px);background:#fff}
 
 .veh{width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:var(--c,#2da44e);border:2px solid var(--veh-border);color:#fff;display:flex;align-items:center;justify-content:center}
 .veh svg{width:14px;height:14px}
-.veh.lt{box-shadow:0 0 0 2px #ff4d4f}.veh.tt{opacity:.55}
 .veh.big{width:34px;height:34px;margin:-17px 0 0 -17px}.veh.big svg{width:20px;height:20px}
 .badge svg{width:18px;height:18px}
-#livebtn{display:flex;align-items:center;gap:6px}#livebtn svg{width:16px;height:16px}
 
 /* Swap Button between From and To */
 #p1{position:relative;margin-bottom:8px}
@@ -494,10 +506,11 @@ input[type=range]:disabled::-moz-range-thumb{background:#71717a}
     flex-direction:row;
     align-items:center;
   }
-  #ctl button{
+  #imhdBtn{
     min-height:36px;
-    padding:6px 11px;
+    padding:6px 12px;
     border-radius:999px;
+    font-size:13px;
   }
 
   .leaflet-bottom.leaflet-right{
@@ -602,14 +615,18 @@ input[type=range]:disabled::-moz-range-thumb{background:#71717a}
   </div>
 </div>
 
-<div id="ctl"><small id="livemsg"></small><button id="livebtn" class="on">Live</button></div>
+<div id="ctl">
+  <a id="imhdBtn" href="https://imhd.sk/ba/online-zastavkova-tabula" target="_blank" rel="noopener" title="Najbližšie odchody na imhd.sk">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17a2 2 0 1 0 4 0 2 2 0 1 0 -4 0"/><path d="M16 17a2 2 0 1 0 4 0 2 2 0 1 0 -4 0"/><path d="M4 17H2V6a1 1 0 0 1 1 -1h14a5 7 0 0 1 5 7v5h-2m-4 0H8"/><path d="m16 5 1.5 7 4.5 0"/><path d="m2 10 15 0"/><path d="m7 5 0 5"/><path d="m12 5 0 5"/></svg>
+    <span>Tabuľa ↗</span>
+  </a>
+</div>
 
 <div id="foot">
   © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ·
   Data: <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous</a> (<a href="https://transitous.org/donate/" target="_blank" rel="noopener">Donate</a>) ·
   <a href="https://github.com/cathlyn-exe/Kiibi" target="_blank" rel="noopener">Source</a> ·
   <a href="mailto:cathlyn@tutamail.com">Contact</a>
-  <span class="hide-mob"> · positions estimated from timetable + delays, not GPS</span>
 </div>
 
 <div id="optwrap" hidden>
@@ -812,7 +829,6 @@ function isSlovakStop(m) {
 
   const lat = Number(m.lat), lon = Number(m.lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
-  // Exclude Austria / Hungary border towns near Bratislava & Šamorín
   if (lon < 16.96) return false;
   if (lat < 48.01 && lon < 17.28) return false;
   if (lat < 47.73) return false;
@@ -1025,11 +1041,8 @@ function legHTML(l) {
   </div>`;
 }
 
-let currentLegs = null;
 function showJourney(legs, boardId) {
   stopTracking();
-  currentLegs = legs;
-  map.removeLayer(live.group);
   $('#journey').hidden = false;
   document.body.classList.add('mob-journey-open');
   setMobileMapMode(false);
@@ -1053,8 +1066,6 @@ $('#jx').onclick = () => {
   stopTracking();
   layer.clearLayers();
   busMarker = null;
-  currentLegs = null;
-  if (live.on) { map.addLayer(live.group); startLive(); }
 };
 $('#jref').onclick = () => { if (trk) refresh(trk.tripId, trk.boardId).catch(() => {}); };
 
@@ -1141,87 +1152,13 @@ function updateWarn() {
   }
 }
 
-/* ---------- all vehicles moving on the map (pauses when tab is hidden) ---------- */
-const live = {on:true, segs:new Map(), group:L.layerGroup().addTo(map), swap:false, tried:false, t1:null, t2:null, deb:null};
-function clearLive() { live.group.clearLayers(); live.segs.clear(); }
-
-async function loadLive() {
-  if (!live.on || currentLegs || document.hidden) return;
-  const z = map.getZoom(), msg = $('#livemsg');
-  if (z < 12) { msg.textContent = 'zoom in for vehicles'; clearLive(); return; }
-  msg.textContent = '';
-  const b = map.getBounds(), now = new Date();
-  const q = swap => ({
-    zoom: z, precision: 6,
-    min: swap ? `${b.getSouth()},${b.getEast()}` : `${b.getSouth()},${b.getWest()}`,
-    max: swap ? `${b.getNorth()},${b.getWest()}` : `${b.getNorth()},${b.getEast()}`,
-    startTime: now.toISOString(), endTime: new Date(+now + 60000).toISOString()
-  });
-  let r = await api('/v6/map/trips', q(live.swap));
-  if (!r.length && !live.tried) {
-    live.tried = true;
-    const r2 = await api('/v6/map/trips', q(!live.swap));
-    if (r2.length) { r = r2; live.swap = !live.swap; }
-  }
-  const keep = new Set();
-  for (const s of r) {
-    if (!s.polyline) continue;
-    const t = s.trips?.[0] || {}, key = (t.tripId || '') + s.departure;
-    keep.add(key);
-    if (live.segs.has(key)) continue;
-    const line = decode(s.polyline, 6), label = t.displayName || t.routeShortName || '';
-    const dl = s.realTime ? dmin(s.departure, s.scheduledDeparture) : 0;
-    const col = s.routeColor ? '#' + s.routeColor : hashCol(label);
-    const m = L.marker(line[0], {icon: htmlIcon(`<div class="veh${dl >= LATE_MIN ? ' lt' : ''}${s.realTime ? '' : ' tt'}" style="--c:${col}">${BUS}</div>`)})
-      .bindTooltip(esc(label) + (dl >= 1 ? ` · +${dl} min` : ''), {direction:'top', offset:[0,-8]}).addTo(live.group);
-    m.on('click', () => t.tripId && api('/v6/trip', {tripId: t.tripId}).then(it => showJourney(it.legs)).catch(() => {}));
-    live.segs.set(key, {m, line, c: cumul(line), dep: new Date(s.departure), arr: new Date(s.arrival)});
-  }
-  for (const [k, v] of live.segs) if (!keep.has(k)) { live.group.removeLayer(v.m); live.segs.delete(k); }
-  animateLive();
-}
-function animateLive() {
-  if (document.hidden) return;
-  const now = new Date();
-  for (const v of live.segs.values()) {
-    const el = v.m.getElement(); if (!el) continue;
-    const f = (now - v.dep) / ((v.arr - v.dep) || 1);
-    if (f < 0 || f > 1) { el.style.display = 'none'; continue; }
-    el.style.display = '';
-    const len = v.c[v.c.length-1], p = atDist(v.line, v.c, len * f), p2 = atDist(v.line, v.c, len * Math.min(1, f + 0.02));
-    v.m.setLatLng(p);
-    if (p2[0] !== p[0] || p2[1] !== p[1]) el.querySelector('svg').style.transform = bearing(p, p2) < 0 ? 'scaleX(-1)' : '';
-  }
-}
-$('#livebtn').insertAdjacentHTML('afterbegin', BUS);
-const goLive = () => loadLive().catch(err => $('#livemsg').textContent = 'live failed: ' + err.message);
-function pauseLive() { clearInterval(live.t1); clearInterval(live.t2); }
-function startLive() {
-  pauseLive();
-  if (!live.on || document.hidden || currentLegs) return;
-  goLive();
-  live.t1 = setInterval(goLive, 30000);
-  live.t2 = setInterval(animateLive, 1000);
-}
-$('#livebtn').onclick = () => {
-  live.on = !live.on; $('#livebtn').classList.toggle('on', live.on);
-  if (live.on && !currentLegs) map.addLayer(live.group);
-  pauseLive();
-  if (live.on) startLive(); else { clearLive(); $('#livemsg').textContent = ''; }
-};
-map.on('moveend', () => { if (!live.on || document.hidden) return; clearTimeout(live.deb); live.deb = setTimeout(goLive, 600); });
-
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    pauseLive();
     clearInterval(timer); clearInterval(tick);
-  } else {
-    if (trk) startTrackLoops();
-    if (live.on && !currentLegs) startLive();
+  } else if (trk) {
+    startTrackLoops();
   }
 });
-
-startLive();
 </script>
 </body>
 </html>
