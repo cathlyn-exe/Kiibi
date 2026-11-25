@@ -23,7 +23,7 @@
   --tab-on-bg:#000000;
   --tab-on-fg:#ffffff;
   --op-bg:#232327;
-  --shadow:0 8px 24px rgba(0,0,0,.45);
+  --shadow:0 8px 28px rgba(0,0,0,.55);
   --slider-fill:#ffffff;
   --slider-track:#26262a;
   --scheme:dark;
@@ -57,7 +57,7 @@ html.light{
   --tab-on-bg:#ffffff;
   --tab-on-fg:#111113;
   --op-bg:#ececf0;
-  --shadow:0 8px 24px rgba(0,0,0,.14);
+  --shadow:0 8px 28px rgba(0,0,0,.16);
   --slider-fill:#111113;
   --slider-track:#d4d4dc;
   --scheme:light;
@@ -142,17 +142,23 @@ input:focus,select:focus{outline:none;border-color:var(--acc)}
   overflow:auto;
   box-shadow:var(--shadow);
 }
+.pick ul:empty{display:none}
 .pick li{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
 .pick li:last-child{border-bottom:0}
 .pick li:hover,.pick li:active{background:var(--bg-sub)}
 
 .when{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.when input{width:auto;flex:1 1 170px}
-.seg.on{border-color:var(--acc);color:var(--acc);font-weight:600}
+.when input{width:auto;flex:1 1 180px}
 .go{background:var(--go-bg);border-color:var(--go-bg);color:var(--go-fg);font-weight:600}
 
-#list{max-height:34vh;overflow-y:auto;margin-top:8px;-webkit-overflow-scrolling:touch}
+#listWrap{margin-top:8px}
+#listWrap[hidden]{display:none}
+.lh{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding:0 2px}
+.lh small{font-weight:600;text-transform:uppercase;letter-spacing:.03em;font-size:11px}
+.lh button{padding:3px 9px;min-height:28px;font-size:13px}
+#list{max-height:32vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .item{padding:10px 11px;margin-top:6px;background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.item:first-child{margin-top:2px}
 .item:hover,.item:active{border-color:var(--line-hover);background:var(--bg-hover)}
 .chip{display:inline-block;color:#fff;font-weight:700;font-size:12px;padding:2px 8px;border-radius:10px;margin-right:4px;margin-top:3px}
 small,.mut{color:var(--mut)}
@@ -185,7 +191,7 @@ small,.mut{color:var(--mut)}
 #ctl{position:fixed;top:calc(10px + var(--safe-t));right:10px;z-index:1000;display:flex;gap:6px;align-items:center}
 #ctl button{background:var(--bg);box-shadow:var(--shadow)}
 #ctl button.on{border-color:var(--grn)}
-#livemsg{background:var(--foot-bg);padding:4px 8px;border-radius:8px}
+#livemsg{background:var(--foot-bg);padding:4px 8px;border-radius:8px;font-size:12px}
 #livemsg:empty{display:none}
 
 /* Bottom-right Floating Stack (Theme Toggle + Leaflet Zoom) */
@@ -256,8 +262,8 @@ small,.mut{color:var(--mut)}
 html.light .tsw{background:var(--acc)}
 html.light .tsw::after{transform:translateX(16px);background:#fff}
 
-/* Mobile Sheet Toggle Handle (Hidden on Desktop) */
-#sheetBar{display:none}
+/* Mobile-only UI Elements (Hidden on Desktop) */
+#sheetBar,#mobRestore{display:none}
 
 /* Required Attribution & Compliance Footer */
 #foot{
@@ -381,27 +387,54 @@ input[type=range]:disabled::-webkit-slider-thumb{background:#71717a}
 input[type=range]:disabled::-moz-range-thumb{background:#71717a}
 .spval{text-align:left;padding-left:6px;font-variant-numeric:tabular-nums}
 
-/* ---------- Mobile Optimization ---------- */
+/* ---------- Mobile Bottom-Sheet Layout ---------- */
 @media(max-width:700px){
   input,select{font-size:16px}
 
+  #mobRestore{
+    display:none;
+    position:fixed;
+    top:calc(10px + var(--safe-t));
+    left:10px;
+    z-index:1000;
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:7px 14px;
+    font-weight:600;
+    font-size:13px;
+    box-shadow:var(--shadow);
+    align-items:center;
+    gap:6px;
+  }
+  body.mob-map-mode #mobRestore{
+    display:inline-flex;
+  }
+
   #ui{
-    top:calc(8px + var(--safe-t));
+    top:auto;
+    bottom:calc(34px + var(--safe-b));
     left:8px;
     right:8px;
     width:auto;
     max-width:none;
-    max-height:calc(100dvh - 54px - var(--safe-t) - var(--safe-b));
-    gap:8px;
+    max-height:58dvh;
+    gap:0;
+    transition:transform .22s ease,opacity .2s ease;
+  }
+  body.mob-map-mode #ui{
+    transform:translateY(calc(100% + 50px));
+    opacity:0;
+    pointer-events:none;
   }
 
-  #ctl{
-    top:auto;
-    bottom:calc(38px + var(--safe-b));
-    left:8px;
-    right:auto;
-    flex-direction:column-reverse;
-    align-items:flex-start;
+  .card{
+    border-radius:16px;
+    padding:12px;
+  }
+
+  body.mob-journey-open #search{
+    display:none !important;
   }
 
   #sheetBar{
@@ -409,16 +442,17 @@ input[type=range]:disabled::-moz-range-thumb{background:#71717a}
     align-items:center;
     justify-content:space-between;
     gap:8px;
-    margin-bottom:8px;
+    margin-bottom:10px;
   }
   #sheetBar .tabs{
     margin-bottom:0;
     flex:1;
   }
   #minBtn{
-    min-height:38px;
-    padding:6px 11px;
+    min-height:36px;
+    padding:5px 11px;
     font-size:13px;
+    font-weight:600;
     background:var(--bg-sub);
     border:0;
     white-space:nowrap;
@@ -426,13 +460,18 @@ input[type=range]:disabled::-moz-range-thumb{background:#71717a}
 
   #search > .tabs{display:none}
 
-  #ui.collapsed #searchBody,
-  #ui.collapsed #journey{
-    display:none !important;
+  /* Autocomplete opens upward, reversed so the #1 best match sits right above the input box */
+  .pick ul{
+    display:flex;
+    flex-direction:column-reverse;
+    top:auto;
+    bottom:calc(100% + 4px);
+    margin:0;
+    max-height:32dvh;
   }
-  #ui.collapsed #sheetBar{
-    margin-bottom:0;
-  }
+  .pick ul:empty{display:none}
+  .pick li{border-bottom:0;border-top:1px solid var(--line)}
+  .pick li:last-child{border-top:0}
 
   .when{
     display:grid;
@@ -443,12 +482,40 @@ input[type=range]:disabled::-moz-range-thumb{background:#71717a}
     grid-column:1 / -1;
     width:100%;
   }
-  .when .go{
-    grid-column:1 / -1;
+
+  #list{max-height:22dvh}
+  #journey{max-height:56dvh}
+
+  #ctl{
+    top:calc(10px + var(--safe-t));
+    right:10px;
+    bottom:auto;
+    left:auto;
+    flex-direction:row;
+    align-items:center;
+  }
+  #ctl button{
+    min-height:36px;
+    padding:6px 11px;
+    border-radius:999px;
   }
 
-  #list{max-height:28dvh}
-  #journey{max-height:44dvh}
+  .leaflet-bottom.leaflet-right{
+    top:calc(54px + var(--safe-t));
+    bottom:auto;
+    right:10px;
+    margin:0;
+    gap:6px;
+  }
+  #themeCtl{
+    min-height:34px;
+    padding:4px 8px;
+  }
+  .leaflet-control-zoom a{
+    width:34px !important;
+    height:34px !important;
+    line-height:32px !important;
+  }
 
   #foot{
     left:8px;
@@ -462,10 +529,11 @@ input[type=range]:disabled::-moz-range-thumb{background:#71717a}
   }
   .hide-mob{display:none}
 
+  /* Options bottom sheet */
   #optwrap{padding:0;align-items:flex-end}
   #opt{
     width:100%;
-    max-height:88dvh;
+    max-height:86dvh;
     border-radius:18px 18px 0 0;
     padding:16px 16px calc(20px + var(--safe-b));
   }
@@ -476,47 +544,59 @@ input[type=range]:disabled::-moz-range-thumb{background:#71717a}
   .r4 > span{font-weight:600}
   .r2{grid-template-columns:1fr}
   .spval{text-align:right}
-
-  .leaflet-bottom.leaflet-right{
-    margin-right:8px;
-    margin-bottom:calc(38px + var(--safe-b));
-  }
 }
 </style>
 </head>
 <body>
 <div id="map"></div>
 
+<button id="mobRestore" type="button" aria-label="Open transit panel">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+  <span id="mobRestoreLbl">Search</span>
+</button>
+
 <div id="ui">
   <div class="card" id="search">
     <div id="sheetBar">
       <div class="tabs"><button id="mt1" class="on">Connections</button><button id="mt2">Departures</button></div>
-      <button id="minBtn" type="button" aria-expanded="true">Hide</button>
+      <button id="minBtn" type="button">Map</button>
     </div>
     <div class="tabs"><button id="t1" class="on">Connections</button><button id="t2">Departures</button></div>
-    <div id="searchBody">
-      <div id="p1">
-        <div class="pick" id="from"><input placeholder="From" autocomplete="off"><ul></ul></div>
-        <div class="pick" id="to"><input placeholder="To" autocomplete="off"><ul></ul></div>
-        <button id="swap" type="button" title="Swap From and To" aria-label="Swap From and To">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m3 16 4 4 4-4"/><path d="M7 20V4"/>
-            <path d="m21 8-4-4-4 4"/><path d="M17 4v16"/>
-          </svg>
-        </button>
-      </div>
-      <div id="p2" hidden><div class="pick" id="dep"><input placeholder="Stop" autocomplete="off"><ul></ul></div></div>
-      <div class="when">
-        <input type="datetime-local" id="when">
-        <button class="seg on" id="bDep">Departure</button><button class="seg" id="bArr">Arrival</button>
-        <button id="bOpt">Options</button><button class="go" id="go">Search</button>
+    <div id="p1">
+      <div class="pick" id="from"><input placeholder="From" autocomplete="off"><ul></ul></div>
+      <div class="pick" id="to"><input placeholder="To" autocomplete="off"><ul></ul></div>
+      <button id="swap" type="button" title="Swap From and To" aria-label="Swap From and To">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m3 16 4 4 4-4"/><path d="M7 20V4"/>
+          <path d="m21 8-4-4-4 4"/><path d="M17 4v16"/>
+        </svg>
+      </button>
+    </div>
+    <div id="p2" hidden><div class="pick" id="dep"><input placeholder="Stop" autocomplete="off"><ul></ul></div></div>
+    <div class="when">
+      <input type="datetime-local" id="when">
+      <button id="bOpt" type="button">Options</button>
+      <button class="go" id="go" type="button">Search</button>
+    </div>
+    <div id="listWrap" hidden>
+      <div class="lh">
+        <small id="listTitle">Results</small>
+        <button id="lx" type="button" title="Clear results" aria-label="Clear results">✕</button>
       </div>
       <div id="list"></div>
     </div>
   </div>
 
   <div class="card" id="journey" hidden>
-    <div class="jh"><b>Journey Details</b><small id="jdate"></small><span><button id="jref" title="Refresh">⟳</button><button id="jx" title="Close">✕</button></span></div>
+    <div class="jh">
+      <b>Journey Details</b>
+      <small id="jdate"></small>
+      <span>
+        <button id="jmap" type="button" title="View on Map">Map</button>
+        <button id="jref" type="button" title="Refresh">⟳</button>
+        <button id="jx" type="button" title="Close">✕</button>
+      </span>
+    </div>
     <div id="warn"></div>
     <div id="detail"></div>
   </div>
@@ -575,7 +655,6 @@ if (typeof L === 'undefined') {
 }
 </script>
 <script>
-// Point this to 'https://kiibi.fyi/transit-api' once you deploy worker.js on Cloudflare
 const API = 'https://api.transitous.org/api';
 const BIAS = '48.10,17.20';
 const LATE_MIN = 3;
@@ -652,6 +731,16 @@ let busMarker = null;
 const zc = () => $('#map').classList.toggle('lowzoom', map.getZoom() < 13);
 map.on('zoomend', zc); zc();
 
+/* ---------- Mobile View State Management ---------- */
+function setMobileMapMode(mapMode) {
+  document.body.classList.toggle('mob-map-mode', mapMode);
+  const hasJourney = !$('#journey').hidden;
+  $('#mobRestoreLbl').textContent = hasJourney ? 'Journey' : 'Search';
+}
+$('#minBtn').onclick = () => setMobileMapMode(true);
+$('#jmap').onclick = () => setMobileMapMode(true);
+$('#mobRestore').onclick = () => setMobileMapMode(false);
+
 function decode(str, prec) {
   let i=0, lat=0, lng=0, out=[], f=10**prec;
   while (i < str.length) {
@@ -702,23 +791,34 @@ function draw(legs, fit) {
   }
   if (fit && pts.length) {
     const isDesktop = window.innerWidth > 700;
-    map.fitBounds(pts, {
-      paddingTopLeft: [isDesktop ? 560 : 20, isDesktop ? 40 : 120],
-      paddingBottomRight: [40, isDesktop ? 40 : 120]
-    });
+    if (isDesktop) {
+      map.fitBounds(pts, {paddingTopLeft:[560, 40], paddingBottomRight:[40, 40]});
+    } else {
+      const sheetPad = Math.round(window.innerHeight * 0.56);
+      map.fitBounds(pts, {paddingTopLeft:[24, 64], paddingBottomRight:[24, sheetPad]});
+    }
   }
 }
 
-/* ---------- mobile sheet collapse ---------- */
-function setCollapsed(c) {
-  $('#ui').classList.toggle('collapsed', c);
-  const btn = $('#minBtn');
-  btn.textContent = c ? 'Show' : 'Hide';
-  btn.setAttribute('aria-expanded', String(!c));
-}
-$('#minBtn').onclick = () => setCollapsed(!$('#ui').classList.contains('collapsed'));
+/* ---------- stop pickers (prioritize Slovak stops first) ---------- */
+function isSlovakStop(m) {
+  const id = String(m.id || '').toLowerCase();
+  if (/^(sk|idsbk|dpb|zssk)[_:-]/.test(id)) return true;
+  if (/^(at|hu|cz|pl|de|oebb|vor|mav|bkk|pid|cd)[_:-]/.test(id)) return false;
 
-/* ---------- stop pickers ---------- */
+  const areas = (m.areas || []).map(a => String(a.name || '').toLowerCase());
+  if (areas.some(a => /\b(slovensko|slovakia|bratislavský|trnavský|nitriansky|trenčiansky|žilinský|banskobystrický|prešovský|košický)\b/.test(a))) return true;
+  if (areas.some(a => /\b(österreich|austria|niederösterreich|wien|burgenland|magyarország|hungary|győr|česko|czech|polska|poland)\b/.test(a))) return false;
+
+  const lat = Number(m.lat), lon = Number(m.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+  // Exclude Austria / Hungary border towns near Bratislava & Šamorín
+  if (lon < 16.96) return false;
+  if (lat < 48.01 && lon < 17.28) return false;
+  if (lat < 47.73) return false;
+  return lat >= 47.73 && lat <= 49.62 && lon >= 16.83 && lon <= 22.57;
+}
+
 const chosen = {};
 function picker(id) {
   const box = $('#'+id), inp = box.querySelector('input'), ul = box.querySelector('ul');
@@ -729,13 +829,15 @@ function picker(id) {
     t = setTimeout(async () => {
       try {
         const res = await api('/v1/geocode', {text: inp.value.trim(), type: 'STOP', place: BIAS});
+        const sorted = [...res].sort((a, b) => Number(isSlovakStop(b)) - Number(isSlovakStop(a)));
         ul.innerHTML = '';
-        res.slice(0,8).forEach(m => {
+        sorted.slice(0, 6).forEach(m => {
           const li = document.createElement('li');
           li.textContent = m.name + (m.areas?.length ? ' — ' + m.areas[0].name : '');
           li.onclick = () => { chosen[id] = {id:m.id, name:m.name}; inp.value = m.name; ul.innerHTML = ''; };
           ul.appendChild(li);
         });
+        ul.scrollTop = 0;
       } catch (e) { ul.innerHTML = '<li>Search failed: ' + esc(e.message) + '</li>'; }
     }, 350);
   });
@@ -749,8 +851,21 @@ $('#swap').onclick = () => {
   $('#to ul').innerHTML = '';
 };
 
+/* ---------- results list helper ---------- */
+function showList(title, content) {
+  $('#listTitle').textContent = title;
+  $('#listWrap').hidden = false;
+  if (typeof content === 'string') $('#list').textContent = content;
+  else $('#list').innerHTML = '';
+}
+function clearList() {
+  $('#listWrap').hidden = true;
+  $('#list').innerHTML = '';
+}
+$('#lx').onclick = clearList;
+
 /* ---------- tabs, time, search ---------- */
-let tabN = 1, arrive = false, touched = false;
+let tabN = 1, touched = false;
 function tab(n) {
   tabN = n;
   $('#p1').hidden = n !== 1;
@@ -759,7 +874,8 @@ function tab(n) {
   $('#t2').classList.toggle('on', n === 2);
   $('#mt1').classList.toggle('on', n === 1);
   $('#mt2').classList.toggle('on', n === 2);
-  setCollapsed(false);
+  clearList();
+  setMobileMapMode(false);
 }
 $('#t1').onclick = () => tab(1); $('#t2').onclick = () => tab(2);
 $('#mt1').onclick = () => tab(1); $('#mt2').onclick = () => tab(2);
@@ -769,17 +885,16 @@ function nowLocal() { const d = new Date(); return `${d.getFullYear()}-${pad(d.g
 $('#when').value = nowLocal();
 $('#when').addEventListener('input', () => touched = true);
 const when = () => touched && $('#when').value ? new Date($('#when').value).toISOString() : new Date().toISOString();
-$('#bDep').onclick = () => { arrive = false; $('#bDep').classList.add('on'); $('#bArr').classList.remove('on'); };
-$('#bArr').onclick = () => { arrive = true; $('#bArr').classList.add('on'); $('#bDep').classList.remove('on'); };
 $('#go').onclick = () => tabN === 1 ? planTrips() : showDepartures();
 
 async function planTrips() {
-  if (!chosen.from || !chosen.to) { $('#list').textContent = 'Pick both stops from the suggestions.'; return; }
-  $('#list').textContent = 'Searching…';
+  if (!chosen.from || !chosen.to) { showList('Connections', 'Pick both stops from the suggestions.'); return; }
+  showList('Connections', 'Searching…');
   try {
-    const r = await api('/v6/plan', {fromPlace: chosen.from.id, toPlace: chosen.to.id, time: when(), arriveBy: arrive, numItineraries: 5, ...optParams()});
+    const r = await api('/v6/plan', {fromPlace: chosen.from.id, toPlace: chosen.to.id, time: when(), arriveBy: false, numItineraries: 5, ...optParams()});
     const its = r.itineraries || [];
-    $('#list').innerHTML = its.length ? '' : 'No trips found.';
+    if (!its.length) { showList('Connections', 'No trips found.'); return; }
+    showList(`${its.length} Connection${its.length === 1 ? '' : 's'}`, null);
     its.forEach(it => {
       const transit = it.legs.filter(l => l.mode !== 'WALK');
       const worst = Math.max(0, ...transit.map(l => l.realTime ? dmin(l.from.departure, l.from.scheduledDeparture) : 0));
@@ -789,16 +904,17 @@ async function planTrips() {
       d.onclick = () => showJourney(it.legs);
       $('#list').appendChild(d);
     });
-  } catch (e) { $('#list').textContent = 'Error: ' + e.message; }
+  } catch (e) { showList('Connections', 'Error: ' + e.message); }
 }
 
 async function showDepartures() {
-  if (!chosen.dep) { $('#list').textContent = 'Pick a stop from the suggestions.'; return; }
-  $('#list').textContent = 'Loading…';
+  if (!chosen.dep) { showList('Departures', 'Pick a stop from the suggestions.'); return; }
+  showList('Departures', 'Loading…');
   try {
-    const r = await api('/v6/stoptimes', {stopId: chosen.dep.id, n: 15, time: when(), arriveBy: arrive});
+    const r = await api('/v6/stoptimes', {stopId: chosen.dep.id, n: 15, time: when(), arriveBy: false});
     const sts = r.stopTimes || [];
-    $('#list').innerHTML = sts.length ? '' : 'No departures.';
+    if (!sts.length) { showList('Departures', 'No departures.'); return; }
+    showList(`Departures · ${chosen.dep.name}`, null);
     sts.forEach(s => {
       const real = s.place.departure || s.place.arrival, sch = s.place.scheduledDeparture || s.place.scheduledArrival;
       const d = document.createElement('div'); d.className = 'item';
@@ -806,11 +922,11 @@ async function showDepartures() {
         <span class="chip" style="background:${s.routeColor ? '#' + s.routeColor : hashCol(s.displayName || s.routeShortName)}">${esc(s.displayName || s.routeShortName)}</span> ${esc(s.headsign || '')}`;
       d.onclick = async () => {
         try { const it = await api('/v6/trip', {tripId: s.tripId}); showJourney(it.legs, s.place.stopId || chosen.dep.id); }
-        catch (e) { $('#list').textContent = 'Error: ' + e.message; }
+        catch (e) { showList('Departures', 'Error: ' + e.message); }
       };
       $('#list').appendChild(d);
     });
-  } catch (e) { $('#list').textContent = 'Error: ' + e.message; }
+  } catch (e) { showList('Departures', 'Error: ' + e.message); }
 }
 
 /* ---------- options dialog ---------- */
@@ -911,11 +1027,16 @@ function legHTML(l) {
 
 let currentLegs = null;
 function showJourney(legs, boardId) {
-  setCollapsed(false);
-  stopTracking(); currentLegs = legs; draw(legs, true); map.removeLayer(live.group);
+  stopTracking();
+  currentLegs = legs;
+  map.removeLayer(live.group);
   $('#journey').hidden = false;
+  document.body.classList.add('mob-journey-open');
+  setMobileMapMode(false);
+  draw(legs, true);
   $('#jdate').textContent = new Date(legs[0].startTime || legs[0].from.departure).toLocaleDateString('en-GB', {timeZone:'Europe/Bratislava'});
   $('#detail').innerHTML = legs.map(legHTML).join('');
+  $('#journey').scrollTop = 0;
   const f = legs.find(l => l.mode !== 'WALK' && l.tripId);
   if (f) track(f.tripId, boardId || f.from.stopId);
 }
@@ -925,7 +1046,16 @@ $('#detail').addEventListener('click', e => {
   const b = e.target.closest('.badge');
   if (b) { const lg = b.closest('.leg'); track(lg.dataset.trip, lg.dataset.board); }
 });
-$('#jx').onclick = () => { $('#journey').hidden = true; stopTracking(); layer.clearLayers(); busMarker = null; currentLegs = null; if (live.on) { map.addLayer(live.group); startLive(); } };
+$('#jx').onclick = () => {
+  $('#journey').hidden = true;
+  document.body.classList.remove('mob-journey-open');
+  setMobileMapMode(false);
+  stopTracking();
+  layer.clearLayers();
+  busMarker = null;
+  currentLegs = null;
+  if (live.on) { map.addLayer(live.group); startLive(); }
+};
 $('#jref').onclick = () => { if (trk) refresh(trk.tripId, trk.boardId).catch(() => {}); };
 
 /* ---------- tracking one trip (pauses when tab is hidden) ---------- */
