@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Bratislava & Šamorín Transit</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'">
+<style>
+:root{
+  --bg:#0b0b0c;
+  --bg-elev:#141417;
+  --bg-sub:#18181b;
+  --bg-hover:#1f1f24;
+  --fg:#f2f2f3;
+  --mut:#8e8e93;
+  --line:#26262a;
+  --line-hover:#44444a;
+  --in:transparent;
+  --acc:#3b82f6;
+  --grn:#2da44e;
+  --go-bg:#ffffff;
+  --go-fg:#000000;
+  --tab-on-bg:#000000;
+  --tab-on-fg:#ffffff;
+  --op-bg:#232327;
+  --shadow:0 8px 24px rgba(0,0,0,.45);
+  --slider-fill:#ffffff;
+  --slider-track:#26262a;
+  --scheme:dark;
+  --map-bg:#111111;
+  --stoplbl:#7ee2a0;
+  --stoplbl-shadow:0 0 3px #000,0 0 3px #000;
+  --veh-border:#000000;
+  --foot-bg:rgba(11,11,12,.85);
+  --foot-link:#9db8e8;
+  --warn-bad-bg:#4a1d1d;--warn-bad-fg:#ffb4b4;
+  --warn-good-bg:#12351f;--warn-good-fg:#8de3a8;
+  --warn-info-bg:#18181b;--warn-info-fg:#8e8e93;
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-t:env(safe-area-inset-top,0px);
+}
+
+html.light{
+  --bg:#ffffff;
+  --bg-elev:#f4f4f6;
+  --bg-sub:#ececf0;
+  --bg-hover:#e2e2e8;
+  --fg:#111113;
+  --mut:#636369;
+  --line:#d8d8df;
+  --line-hover:#aeaeb8;
+  --in:#ffffff;
+  --acc:#2563eb;
+  --grn:#16a34a;
+  --go-bg:#111113;
+  --go-fg:#ffffff;
+  --tab-on-bg:#ffffff;
+  --tab-on-fg:#111113;
+  --op-bg:#ececf0;
+  --shadow:0 8px 24px rgba(0,0,0,.14);
+  --slider-fill:#111113;
+  --slider-track:#d4d4dc;
+  --scheme:light;
+  --map-bg:#e5e3df;
+  --stoplbl:#0f5132;
+  --stoplbl-shadow:0 0 3px #fff,0 0 4px #fff;
+  --veh-border:#ffffff;
+  --foot-bg:rgba(255,255,255,.9);
+  --foot-link:#1d4ed8;
+  --warn-bad-bg:#fee2e2;--warn-bad-fg:#991b1b;
+  --warn-good-bg:#dcfce7;--warn-good-fg:#166534;
+  --warn-info-bg:#f4f4f6;--warn-info-fg:#52525b;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;font:14px system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--map-bg);overflow:hidden}
+#map{position:fixed;inset:0;background:var(--map-bg)}
+
+#ui{
+  position:fixed;
+  top:calc(10px + var(--safe-t));
+  left:10px;
+  z-index:1000;
+  width:520px;
+  max-width:calc(100% - 20px);
+  max-height:calc(100% - 54px - var(--safe-t) - var(--safe-b));
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  pointer-events:none;
+}
+.card{
+  pointer-events:auto;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px;
+  box-shadow:var(--shadow);
+  transition:background .2s,border-color .2s,color .2s;
+}
+button{
+  font:inherit;
+  color:var(--fg);
+  background:var(--in);
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:8px 12px;
+  min-height:38px;
+  cursor:pointer;
+  transition:background .15s,border-color .15s,color .15s;
+}
+button:hover{border-color:var(--line-hover)}
+
+.tabs{display:flex;margin-bottom:10px;background:var(--bg-sub);border-radius:9px;padding:3px}
+.tabs button{flex:1;border:0;border-radius:7px;background:transparent;color:var(--mut);min-height:34px;font-weight:500}
+.tabs button.on{background:var(--tab-on-bg);color:var(--tab-on-fg);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+
+.pick{position:relative;margin-bottom:8px}
+input{
+  width:100%;
+  min-height:40px;
+  padding:9px 12px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--in);
+  color:var(--fg);
+  font:inherit;
+  color-scheme:var(--scheme);
+}
+input:focus,select:focus{outline:none;border-color:var(--acc)}
+.pick ul{
+  position:absolute;
+  z-index:1200;
+  left:0;right:0;
+  margin:3px 0 0;
+  padding:0;
+  list-style:none;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:10px;
+  max-height:220px;
+  overflow:auto;
+  box-shadow:var(--shadow);
+}
+.pick li{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
+.pick li:last-child{border-bottom:0}
+.pick li:hover,.pick li:active{background:var(--bg-sub)}
+
+.when{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.when input{width:auto;flex:1 1 170px}
+.seg.on{border-color:var(--acc);color:var(--acc);font-weight:600}
+.go{background:var(--go-bg);border-color:var(--go-bg);color:var(--go-fg);font-weight:600}
+
+#list{max-height:34vh;overflow-y:auto;margin-top:8px;-webkit-overflow-scrolling:touch}
+.item{padding:10px 11px;margin-top:6px;background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.item:hover,.item:active{border-color:var(--line-hover);background:var(--bg-hover)}
+.chip{display:inline-block;color:#fff;font-weight:700;font-size:12px;padding:2px 8px;border-radius:10px;margin-right:4px;margin-top:3px}
+small,.mut{color:var(--mut)}
+.late{color:#ef4444;font-weight:700;margin-left:6px}.ok{color:#22c55e;font-weight:600}
+
+#journey{overflow-y:auto;max-height:54vh;-webkit-overflow-scrolling:touch}
+.jh{display:flex;align-items:center;gap:8px;margin-bottom:6px;position:sticky;top:-10px;background:var(--bg);padding:4px 0;z-index:5}
+.jh span{margin-left:auto;display:flex;gap:6px}
+.jh button{padding:4px 10px;min-height:34px}
+
+#warn{margin:6px 0;padding:9px 11px;border-radius:9px;display:none;font-size:13px}
+#warn.bad{display:block;background:var(--warn-bad-bg);color:var(--warn-bad-fg)}
+#warn.good{display:block;background:var(--warn-good-bg);color:var(--warn-good-fg)}
+#warn.info{display:block;background:var(--warn-info-bg);color:var(--warn-info-fg)}
+
+.leg{position:relative;padding:4px 0 10px 44px}
+.leg .rail{position:absolute;left:15px;top:32px;bottom:12px;width:4px;border-radius:2px;background:var(--c)}
+.badge{margin-left:-44px;margin-bottom:12px;display:inline-flex;gap:6px;align-items:center;background:var(--c);color:#fff;font-weight:700;font-size:15px;padding:5px 12px;border-radius:18px;cursor:pointer}
+.row{display:flex;align-items:center;gap:10px;padding:5px 0}
+.row b{min-width:42px}.row .nm{font-weight:700;font-size:15px;flex:1}
+.plat{border:1px solid var(--line);border-radius:12px;padding:3px 10px;font-weight:700;font-size:12px}
+.sub{color:var(--mut);padding:2px 0 6px 52px}
+.op{display:inline-block;margin:4px 0 6px 52px;padding:7px 11px;background:var(--op-bg);border:0;border-radius:8px;color:var(--fg);text-decoration:none;font-size:13px}
+.ex{display:block;margin:8px 0 8px 40px;border:0;background:transparent;color:var(--mut);font-size:14px;min-height:32px;padding:4px 8px}
+.mid{list-style:none;margin:0 0 8px 52px;padding:0;color:var(--mut)}.mid li{padding:3px 0}.mid b{display:inline-block;min-width:46px;color:var(--fg)}
+.row.end::before{content:'';position:absolute;left:10px;width:14px;height:14px;border-radius:50%;background:var(--c)}
+.walk{padding:6px 0 10px 44px;color:var(--mut)}
+
+/* Top-right Live Control */
+#ctl{position:fixed;top:calc(10px + var(--safe-t));right:10px;z-index:1000;display:flex;gap:6px;align-items:center}
+#ctl button{background:var(--bg);box-shadow:var(--shadow)}
+#ctl button.on{border-color:var(--grn)}
+#livemsg{background:var(--foot-bg);padding:4px 8px;border-radius:8px}
+#livemsg:empty{display:none}
+
+/* Bottom-right Floating Stack (Theme Toggle + Leaflet Zoom) */
+.leaflet-bottom.leaflet-right{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:8px;
+  margin-right:10px;
+  margin-bottom:calc(36px + var(--safe-b));
+}
+.leaflet-bottom.leaflet-right .leaflet-control{
+  margin:0 !important;
+}
+.leaflet-control-zoom{
+  border:1px solid var(--line) !important;
+  border-radius:10px !important;
+  overflow:hidden;
+  box-shadow:var(--shadow) !important;
+}
+.leaflet-control-zoom a{
+  background:var(--bg) !important;
+  color:var(--fg) !important;
+  border-bottom:1px solid var(--line) !important;
+  width:38px !important;
+  height:38px !important;
+  line-height:36px !important;
+  font-size:18px !important;
+}
+.leaflet-control-zoom a:last-child{border-bottom:0 !important}
+.leaflet-control-zoom a:hover{background:var(--bg-sub) !important}
+
+/* Theme Toggle Switch in Bottom Right */
+#themeCtl{
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:5px 10px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  box-shadow:var(--shadow);
+  cursor:pointer;
+  user-select:none;
+  color:var(--fg);
+  font-size:12px;
+  font-weight:600;
+  min-height:38px;
+}
+#themeCtl:hover{border-color:var(--line-hover)}
+#themeCtl svg{width:15px;height:15px;flex:none}
+.tsw{
+  width:36px;height:20px;
+  border-radius:999px;
+  background:var(--line);
+  position:relative;
+  transition:background .2s;
+}
+.tsw::after{
+  content:'';
+  position:absolute;
+  top:2px;left:2px;
+  width:16px;height:16px;
+  border-radius:50%;
+  background:var(--fg);
+  transition:transform .2s,background .2s;
+}
+html.light .tsw{background:var(--acc)}
+html.light .tsw::after{transform:translateX(16px);background:#fff}
+
+/* Mobile Sheet Toggle Handle (Hidden on Desktop) */
+#sheetBar{display:none}
+
+/* Required Attribution & Compliance Footer (Visible on Desktop & Mobile) */
+#foot{
+  pointer-events:auto;
+  position:fixed;
+  left:10px;
+  right:10px;
+  bottom:calc(6px + var(--safe-b));
+  z-index:900;
+  font-size:11px;
+  line-height:1.35;
+  color:var(--mut);
+  background:var(--foot-bg);
+  border:1px solid var(--line);
+  padding:4px 9px;
+  border-radius:8px;
+  width:fit-content;
+  max-width:calc(100% - 20px);
+  backdrop-filter:blur(6px);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#foot a{color:var(--foot-link);text-decoration:none}
+#foot a:hover{text-decoration:underline}
+
+.leaflet-container{font:inherit}
+.leaflet-control-attribution{display:none !important}
+.stoplbl{background:transparent;border:0;box-shadow:none;color:var(--stoplbl);font-weight:600;font-size:12px;text-shadow:var(--stoplbl-shadow)}
+.stoplbl::before{display:none}
+#map.lowzoom .stoplbl{display:none}
+.dark-osm-tiles{filter:invert(100%) hue-rotate(180deg) brightness(92%) contrast(92%) saturate(75%)}
+
+.veh{width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:var(--c,#2da44e);border:2px solid var(--veh-border);color:#fff;display:flex;align-items:center;justify-content:center}
+.veh svg{width:14px;height:14px}
+.veh.lt{box-shadow:0 0 0 2px #ff4d4f}.veh.tt{opacity:.55}
+.veh.big{width:34px;height:34px;margin:-17px 0 0 -17px}.veh.big svg{width:20px;height:20px}
+.badge svg{width:18px;height:18px}
+#livebtn{display:flex;align-items:center;gap:6px}#livebtn svg{width:16px;height:16px}
+
+/* Swap Button between From and To */
+#p1{position:relative;margin-bottom:8px}
+#p1 .pick:last-of-type{margin-bottom:0}
+#p1 .pick input{padding-right:52px}
+#swap{
+  position:absolute;
+  right:8px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:5;
+  width:36px;
+  height:36px;
+  min-height:36px;
+  padding:0;
+  border-radius:9px;
+  background:var(--bg-elev);
+  border:1px solid var(--line);
+  color:var(--fg);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+  transition:background .15s,border-color .15s,transform .15s;
+}
+#swap:hover{background:var(--bg-hover);border-color:var(--line-hover)}
+#swap:active{transform:translateY(-50%) scale(.94)}
+#swap svg{width:17px;height:17px;display:block}
+
+/* Options Modal Styling */
+select{
+  appearance:none;
+  width:100%;
+  min-height:40px;
+  padding:9px 34px 9px 12px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  color:var(--fg);
+  font:inherit;
+  color-scheme:var(--scheme);
+  cursor:pointer;
+}
+select:hover:not(:disabled){border-color:var(--line-hover)}
+select:disabled,input:disabled{opacity:.38;cursor:not-allowed}
+select option{background:var(--bg);color:var(--fg)}
+
+#optwrap{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.65);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:12px}
+#optwrap[hidden]{display:none}
+#opt{width:680px;max-width:100%;max-height:90dvh;overflow-y:auto;padding:18px 20px;background:var(--bg);border:1px solid var(--line);border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.55);-webkit-overflow-scrolling:touch}
+.oh{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;font-size:18px}
+.oh button{padding:4px 10px;min-height:34px;background:var(--bg-sub);border:0;border-radius:8px;color:var(--mut);font-size:14px}
+.oh button:hover{color:var(--fg);background:var(--bg-hover)}
+
+.modewrap{position:relative;display:flex;align-items:center}
+.modewrap svg{position:absolute;left:14px;width:20px;height:20px;color:var(--mut);pointer-events:none}
+.modewrap select{padding:11px 38px;text-align:center;text-align-last:center;background-color:var(--bg)}
+
+.tg{display:grid;grid-template-columns:1fr 1fr;gap:14px 24px;margin:18px 0}
+.sw{display:flex;align-items:center;gap:12px;cursor:pointer;line-height:1.3;user-select:none;min-height:32px}
+.sw input{display:none}
+.sw i{flex:none;width:44px;height:24px;border-radius:12px;background:var(--line);position:relative;transition:.15s}
+.sw i::after{content:'';position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw input:checked+i{background:var(--acc)}.sw input:checked+i::after{left:23px}
+
+.orow{display:grid;gap:10px 12px;align-items:center;margin:12px 0}
+.r3{grid-template-columns:150px 1fr 140px}
+.r4{grid-template-columns:150px 125px 1fr 140px}
+.r2{grid-template-columns:1fr 292px}
+.vrow{display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px}
+.vrow button,#addVia{background:var(--bg-sub);border:0;padding:8px 14px;border-radius:9px;font-weight:500}
+.vrow button:hover:not(:disabled){background:var(--bg-hover)}
+#vias .pick{margin-bottom:8px}#vias input{padding-right:42px}
+.vx{position:absolute;right:6px;top:3px;padding:3px 9px;min-height:34px;background:transparent;border:0;color:var(--mut)}
+.ohint{color:var(--mut);font-size:12px;margin:6px 0 14px}
+
+/* Custom Range Sliders */
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;min-height:6px;padding:0;border:0;border-radius:999px;background:var(--slider-track);cursor:pointer;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--slider-fill);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border:0;border-radius:50%;background:var(--slider-fill);cursor:pointer}
+input[type=range]:disabled::-webkit-slider-thumb{background:#71717a}
+input[type=range]:disabled::-moz-range-thumb{background:#71717a}
+.spval{text-align:left;padding-left:6px;font-variant-numeric:tabular-nums}
+
+/* ---------- Mobile Optimization ---------- */
+@media(max-width:700px){
+  input,select{font-size:16px}
+
+  #ui{
+    top:calc(8px + var(--safe-t));
+    left:8px;
+    right:8px;
+    width:auto;
+    max-width:none;
+    max-height:calc(100dvh - 54px - var(--safe-t) - var(--safe-b));
+    gap:8px;
+  }
+
+  #ctl{
+    top:auto;
+    bottom:calc(38px + var(--safe-b));
+    left:8px;
+    right:auto;
+    flex-direction:column-reverse;
+    align-items:flex-start;
+  }
+
+  #sheetBar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  #sheetBar .tabs{
+    margin-bottom:0;
+    flex:1;
+  }
+  #minBtn{
+    min-height:38px;
+    padding:6px 11px;
+    font-size:13px;
+    background:var(--bg-sub);
+    border:0;
+    white-space:nowrap;
+  }
+
+  #search > .tabs{display:none}
+
+  #ui.collapsed #searchBody,
+  #ui.collapsed #journey{
+    display:none !important;
+  }
+  #ui.collapsed #sheetBar{
+    margin-bottom:0;
+  }
+
+  .when{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .when input{
+    grid-column:1 / -1;
+    width:100%;
+  }
+  .when .go{
+    grid-column:1 / -1;
+  }
+
+  #list{max-height:28dvh}
+  #journey{max-height:44dvh}
+
+  #foot{
+    left:8px;
+    right:8px;
+    bottom:calc(6px + var(--safe-b));
+    width:auto;
+    max-width:none;
+    font-size:10px;
+    padding:3px 7px;
+    text-align:center;
+  }
+  .hide-mob{display:none}
+
+  #optwrap{padding:0;align-items:flex-end}
+  #opt{
+    width:100%;
+    max-height:88dvh;
+    border-radius:18px 18px 0 0;
+    padding:16px 16px calc(20px + var(--safe-b));
+  }
+  .tg{grid-template-columns:1fr;gap:12px}
+  .r3{grid-template-columns:1fr 1fr}
+  .r3 > span:first-child{grid-column:1 / -1;font-weight:600;margin-bottom:-4px}
+  .r4{grid-template-columns:1fr 1fr}
+  .r4 > span{font-weight:600}
+  .r2{grid-template-columns:1fr}
+  .spval{text-align:right}
+
+  .leaflet-bottom.leaflet-right{
+    margin-right:8px;
+    margin-bottom:calc(38px + var(--safe-b));
+  }
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="ui">
+  <div class="card" id="search">
+    <div id="sheetBar">
+      <div class="tabs"><button id="mt1" class="on">Connections</button><button id="mt2">Departures</button></div>
+      <button id="minBtn" type="button" aria-expanded="true">Hide</button>
+    </div>
+    <div class="tabs"><button id="t1" class="on">Connections</button><button id="t2">Departures</button></div>
+    <div id="searchBody">
+      <div id="p1">
+        <div class="pick" id="from"><input placeholder="From" autocomplete="off"><ul></ul></div>
+        <div class="pick" id="to"><input placeholder="To" autocomplete="off"><ul></ul></div>
+        <button id="swap" type="button" title="Swap From and To" aria-label="Swap From and To">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 16 4 4 4-4"/><path d="M7 20V4"/>
+            <path d="m21 8-4-4-4 4"/><path d="M17 4v16"/>
+          </svg>
+        </button>
+      </div>
+      <div id="p2" hidden><div class="pick" id="dep"><input placeholder="Stop" autocomplete="off"><ul></ul></div></div>
+      <div class="when">
+        <input type="datetime-local" id="when">
+        <button class="seg on" id="bDep">Departure</button><button class="seg" id="bArr">Arrival</button>
+        <button id="bOpt">Options</button><button class="go" id="go">Search</button>
+      </div>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <div class="card" id="journey" hidden>
+    <div class="jh"><b>Journey Details</b><small id="jdate"></small><span><button id="jref" title="Refresh">⟳</button><button id="jx" title="Close">✕</button></span></div>
+    <div id="warn"></div>
+    <div id="detail"></div>
+  </div>
+</div>
+
+<div id="ctl"><small id="livemsg"></small><button id="livebtn" class="on">Live</button></div>
+
+<div id="foot">
+  © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ·
+  Data: <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous</a> (<a href="https://transitous.org/donate/" target="_blank" rel="noopener">Donate</a>) ·
+  <a href="https://github.com/healthyhuman-uk/transit" target="_blank" rel="noopener">Source</a> ·
+  <a href="mailto:transit@healthyhuman.uk">Contact</a>
+  <span class="hide-mob"> · positions estimated from timetable + delays, not GPS</span>
+</div>
+
+<div id="optwrap" hidden>
+  <div class="card" id="opt">
+    <div class="oh"><b>Options</b><button id="ox" type="button" title="Close">✕</button></div>
+    <div class="modewrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/>
+      </svg>
+      <select id="oMode">
+        <option value="">All transit modes</option>
+        <option value="BUS">Bus</option>
+        <option value="TRAM">Tram</option>
+        <option value="BUS,TRAM">Bus and tram</option>
+        <option value="RAIL">Rail</option>
+      </select>
+    </div>
+    <div class="tg">
+      <label class="sw"><input type="checkbox" id="oRouted"><i></i><span>Use routed transfers</span></label>
+      <label class="sw"><input type="checkbox" id="oWheel"><i></i><span>Only wheelchair accessible connections</span></label>
+      <label class="sw"><input type="checkbox" id="oBikeC"><i></i><span>Bike carriage</span></label>
+      <label class="sw"><input type="checkbox" id="oCarC"><i></i><span>Car carriage</span></label>
+      <label class="sw"><input type="checkbox" id="oNoRes"><i></i><span>No reservation required</span></label>
+    </div>
+    <div class="vrow"><span>Via stops</span><button id="addVia" type="button">Add via stop</button></div>
+    <div id="vias"></div>
+    <div class="orow r4"><span>Max. transfers</span><select id="oMax"></select><span>Additional transfer time</span><input id="oAdd" type="number" min="0" placeholder="Duration (min)"></div>
+    <div class="orow r3"><span>First mile</span><select id="oPre"></select><select id="oPreT"></select></div>
+    <div class="orow r3"><span>Last mile</span><select id="oPost"></select><select id="oPostT"></select></div>
+    <div class="orow r3"><span>Direct connection</span><select id="oDir"></select><select id="oDirT"></select></div>
+    <div class="ohint">First and last mile only matter when From/To is a map point; with stops they have no effect.</div>
+    <div class="orow r3"><span>Pedestrian speed</span><input type="range" id="oPed" min="2" max="8" step="0.1" value="4.3"><span class="spval" id="oPedV">4.3 km/h</span></div>
+    <div class="orow r3"><span>Cycling speed</span><input type="range" id="oBike" min="8" max="30" step="0.1" value="15.1"><span class="spval" id="oBikeV">15.1 km/h</span></div>
+    <div class="orow r2"><span>Avoid steep incline</span>
+      <select id="oElev"><option value="NONE">No detours</option><option value="LOW">Few detours</option><option value="HIGH">More detours</option></select></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+if (typeof L === 'undefined') {
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"><\/script>');
+}
+</script>
+<script>
+// Point this to your Cloudflare Worker route (e.g. 'https://healthyhuman.uk/transit-api') once deployed
+const API = 'https://api.transitous.org/api';
+const BIAS = '48.10,17.20';
+const LATE_MIN = 3;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = iso => iso ? new Date(iso).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Bratislava'}) : '';
+const dmin = (a,b) => (a && b) ? Math.round((new Date(a)-new Date(b))/60000) : 0;
+const lateTag = (d, rt) => (rt && d >= 1) ? `<span class="late">+${d}</span>` : '';
+const colr = l => l.mode === 'WALK' ? '#8b93a1' : (l.routeColor ? '#' + l.routeColor : '#2da44e');
+const hashCol = s => { let h = 0; for (const ch of String(s)) h = (h*31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 70% 55%)`; };
+const T = (p, k) => new Date(p[k] || p.departure || p.arrival);
+
+async function api(path, params) {
+  const u = new URL(API + path);
+  for (const [k,v] of Object.entries(params)) if (v != null) u.searchParams.set(k, v);
+  const r = await fetch(u);
+  if (r.status === 429) throw new Error('Rate limited — please wait a moment');
+  if (!r.ok) throw new Error('API error ' + r.status);
+  return r.json();
+}
+
+/* ---------- map & theme ---------- */
+const map = L.map('map', {zoomControl:false}).setView([48.15, 17.11], 12);
+
+const ThemeControl = L.Control.extend({
+  options: { position: 'bottomright' },
+  onAdd: function () {
+    const btn = L.DomUtil.create('button', '');
+    btn.id = 'themeCtl';
+    btn.type = 'button';
+    btn.title = 'Toggle Light / Dark Mode';
+    btn.setAttribute('aria-label', 'Toggle Light or Dark Mode');
+    btn.innerHTML = `
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+      </svg>
+      <span class="tsw"></span>
+    `;
+    L.DomEvent.disableClickPropagation(btn);
+    btn.onclick = () => applyTheme(!document.documentElement.classList.contains('light'));
+    return btn;
+  }
+});
+new ThemeControl().addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+
+const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap contributors',
+  className: 'dark-osm-tiles'
+}).addTo(map);
+
+const MOON_SVG = '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>';
+const SUN_SVG = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>';
+
+function applyTheme(isLight) {
+  document.documentElement.classList.toggle('light', isLight);
+  localStorage.setItem('transit-theme', isLight ? 'light' : 'dark');
+  const tileEl = tileLayer.getContainer();
+  if (tileEl) tileEl.classList.toggle('dark-osm-tiles', !isLight);
+  tileLayer.options.className = isLight ? '' : 'dark-osm-tiles';
+  const icon = $('#themeIcon');
+  if (icon) icon.innerHTML = isLight ? SUN_SVG : MOON_SVG;
+  if (typeof updateAllSliders === 'function') updateAllSliders();
+}
+
+if (localStorage.getItem('transit-theme') === 'light') applyTheme(true);
+
+window.addEventListener('load', () => map.invalidateSize());
+window.addEventListener('resize', () => map.invalidateSize());
+setTimeout(() => map.invalidateSize(), 250);
+const layer = L.layerGroup().addTo(map);
+let busMarker = null;
+const zc = () => $('#map').classList.toggle('lowzoom', map.getZoom() < 13);
+map.on('zoomend', zc); zc();
+
+function decode(str, prec) {
+  let i=0, lat=0, lng=0, out=[], f=10**prec;
+  while (i < str.length) {
+    let b, s=0, r=0;
+    do { b = str.charCodeAt(i++)-63; r |= (b&31)<<s; s+=5; } while (b>=32);
+    lat += (r&1) ? ~(r>>1) : (r>>1);
+    s=0; r=0;
+    do { b = str.charCodeAt(i++)-63; r |= (b&31)<<s; s+=5; } while (b>=32);
+    lng += (r&1) ? ~(r>>1) : (r>>1);
+    out.push([lat/f, lng/f]);
+  }
+  return out;
+}
+
+const RAD = Math.PI/180, EARTH = 6371000;
+const dist = (a, b) => Math.hypot((b[1]-a[1]) * Math.cos((a[0]+b[0])/2*RAD), b[0]-a[0]) * RAD * EARTH;
+const bearing = (a, b) => Math.atan2((b[1]-a[1]) * Math.cos(a[0]*RAD), b[0]-a[0]) / RAD;
+function cumul(line) { const c = [0]; for (let i = 1; i < line.length; i++) c.push(c[i-1] + dist(line[i-1], line[i])); return c; }
+function atDist(line, c, d) {
+  const n = line.length - 1;
+  if (d <= 0) return line[0];
+  if (d >= c[n]) return line[n];
+  let i = 1; while (c[i] < d) i++;
+  const f = (d - c[i-1]) / ((c[i] - c[i-1]) || 1);
+  return [line[i-1][0] + (line[i][0]-line[i-1][0])*f, line[i-1][1] + (line[i][1]-line[i-1][1])*f];
+}
+const htmlIcon = html => L.divIcon({html, className:'', iconSize:[0,0]});
+const BUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17a2 2 0 1 0 4 0 2 2 0 1 0 -4 0"/><path d="M16 17a2 2 0 1 0 4 0 2 2 0 1 0 -4 0"/><path d="M4 17H2V6a1 1 0 0 1 1 -1h14a5 7 0 0 1 5 7v5h-2m-4 0H8"/><path d="m16 5 1.5 7 4.5 0"/><path d="m2 10 15 0"/><path d="m7 5 0 5"/><path d="m12 5 0 5"/></svg>';
+
+function draw(legs, fit) {
+  layer.clearLayers(); busMarker = null;
+  const pts = [];
+  for (const l of legs) {
+    const walk = l.mode === 'WALK', col = colr(l);
+    const line = l.legGeometry ? decode(l.legGeometry.points, l.legGeometry.precision ?? 6)
+                               : [[l.from.lat,l.from.lon],[l.to.lat,l.to.lon]];
+    if (!walk) L.polyline(line, {color:'#000', weight:10, opacity:.45, lineCap:'round', lineJoin:'round'}).addTo(layer);
+    L.polyline(line, {color: col, weight: walk ? 4 : 6, dashArray: walk ? '2 8' : null, lineCap:'round', lineJoin:'round'}).addTo(layer);
+    pts.push(...line);
+    if (walk) continue;
+    [l.from, ...(l.intermediateStops || []), l.to].forEach(p => {
+      const real = p.departure || p.arrival, sch = p.scheduledDeparture || p.scheduledArrival;
+      L.circleMarker([p.lat,p.lon], {radius:5, color:col, fillColor:'#fff', fillOpacity:1, weight:3})
+        .bindTooltip(esc(p.name), {permanent:true, direction:'right', offset:[7,0], className:'stoplbl'})
+        .bindPopup(`<b>${esc(p.name)}</b><br>${fmt(real)} ${l.realTime ? (dmin(real,sch) >= 1 ? '+' + dmin(real,sch) + ' min' : 'on time') : '(timetable)'}`)
+        .addTo(layer);
+    });
+  }
+  if (fit && pts.length) {
+    const isDesktop = window.innerWidth > 700;
+    map.fitBounds(pts, {
+      paddingTopLeft: [isDesktop ? 560 : 20, isDesktop ? 40 : 120],
+      paddingBottomRight: [40, isDesktop ? 40 : 120]
+    });
+  }
+}
+
+/* ---------- mobile sheet collapse ---------- */
+function setCollapsed(c) {
+  $('#ui').classList.toggle('collapsed', c);
+  const btn = $('#minBtn');
+  btn.textContent = c ? 'Show' : 'Hide';
+  btn.setAttribute('aria-expanded', String(!c));
+}
+$('#minBtn').onclick = () => setCollapsed(!$('#ui').classList.contains('collapsed'));
+
+/* ---------- stop pickers ---------- */
+const chosen = {};
+function picker(id) {
+  const box = $('#'+id), inp = box.querySelector('input'), ul = box.querySelector('ul');
+  let t;
+  inp.addEventListener('input', () => {
+    chosen[id] = null; clearTimeout(t);
+    if (inp.value.trim().length < 2) { ul.innerHTML = ''; return; }
+    t = setTimeout(async () => {
+      try {
+        const res = await api('/v1/geocode', {text: inp.value.trim(), type: 'STOP', place: BIAS});
+        ul.innerHTML = '';
+        res.slice(0,8).forEach(m => {
+          const li = document.createElement('li');
+          li.textContent = m.name + (m.areas?.length ? ' — ' + m.areas[0].name : '');
+          li.onclick = () => { chosen[id] = {id:m.id, name:m.name}; inp.value = m.name; ul.innerHTML = ''; };
+          ul.appendChild(li);
+        });
+      } catch (e) { ul.innerHTML = '<li>Search failed: ' + esc(e.message) + '</li>'; }
+    }, 350);
+  });
+}
+['from','to','dep'].forEach(picker);
+$('#swap').onclick = () => {
+  const a = $('#from input'), b = $('#to input');
+  [a.value, b.value] = [b.value, a.value];
+  [chosen.from, chosen.to] = [chosen.to, chosen.from];
+  $('#from ul').innerHTML = '';
+  $('#to ul').innerHTML = '';
+};
+
+/* ---------- tabs, time, search ---------- */
+let tabN = 1, arrive = false, touched = false;
+function tab(n) {
+  tabN = n;
+  $('#p1').hidden = n !== 1;
+  $('#p2').hidden = n !== 2;
+  $('#t1').classList.toggle('on', n === 1);
+  $('#t2').classList.toggle('on', n === 2);
+  $('#mt1').classList.toggle('on', n === 1);
+  $('#mt2').classList.toggle('on', n === 2);
+  setCollapsed(false);
+}
+$('#t1').onclick = () => tab(1); $('#t2').onclick = () => tab(2);
+$('#mt1').onclick = () => tab(1); $('#mt2').onclick = () => tab(2);
+
+const pad = n => String(n).padStart(2, '0');
+function nowLocal() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+$('#when').value = nowLocal();
+$('#when').addEventListener('input', () => touched = true);
+const when = () => touched && $('#when').value ? new Date($('#when').value).toISOString() : new Date().toISOString();
+$('#bDep').onclick = () => { arrive = false; $('#bDep').classList.add('on'); $('#bArr').classList.remove('on'); };
+$('#bArr').onclick = () => { arrive = true; $('#bArr').classList.add('on'); $('#bDep').classList.remove('on'); };
+$('#go').onclick = () => tabN === 1 ? planTrips() : showDepartures();
+
+async function planTrips() {
+  if (!chosen.from || !chosen.to) { $('#list').textContent = 'Pick both stops from the suggestions.'; return; }
+  $('#list').textContent = 'Searching…';
+  try {
+    const r = await api('/v6/plan', {fromPlace: chosen.from.id, toPlace: chosen.to.id, time: when(), arriveBy: arrive, numItineraries: 5, ...optParams()});
+    const its = r.itineraries || [];
+    $('#list').innerHTML = its.length ? '' : 'No trips found.';
+    its.forEach(it => {
+      const transit = it.legs.filter(l => l.mode !== 'WALK');
+      const worst = Math.max(0, ...transit.map(l => l.realTime ? dmin(l.from.departure, l.from.scheduledDeparture) : 0));
+      const d = document.createElement('div'); d.className = 'item';
+      d.innerHTML = `<b>${fmt(it.startTime)} → ${fmt(it.endTime)}</b> <small>${Math.round(it.duration/60)} min · ${it.transfers} transfer(s)</small>${lateTag(worst, true)}<br>
+        ${transit.map(l => `<span class="chip" style="background:${colr(l)}">${esc(l.displayName || l.routeShortName || l.mode)}</span>`).join('')}`;
+      d.onclick = () => showJourney(it.legs);
+      $('#list').appendChild(d);
+    });
+  } catch (e) { $('#list').textContent = 'Error: ' + e.message; }
+}
+
+async function showDepartures() {
+  if (!chosen.dep) { $('#list').textContent = 'Pick a stop from the suggestions.'; return; }
+  $('#list').textContent = 'Loading…';
+  try {
+    const r = await api('/v6/stoptimes', {stopId: chosen.dep.id, n: 15, time: when(), arriveBy: arrive});
+    const sts = r.stopTimes || [];
+    $('#list').innerHTML = sts.length ? '' : 'No departures.';
+    sts.forEach(s => {
+      const real = s.place.departure || s.place.arrival, sch = s.place.scheduledDeparture || s.place.scheduledArrival;
+      const d = document.createElement('div'); d.className = 'item';
+      d.innerHTML = `<b>${fmt(real)}</b>${lateTag(dmin(real,sch), s.realTime)} ${s.realTime ? '' : '<small>(timetable)</small>'}
+        <span class="chip" style="background:${s.routeColor ? '#' + s.routeColor : hashCol(s.displayName || s.routeShortName)}">${esc(s.displayName || s.routeShortName)}</span> ${esc(s.headsign || '')}`;
+      d.onclick = async () => {
+        try { const it = await api('/v6/trip', {tripId: s.tripId}); showJourney(it.legs, s.place.stopId || chosen.dep.id); }
+        catch (e) { $('#list').textContent = 'Error: ' + e.message; }
+      };
+      $('#list').appendChild(d);
+    });
+  } catch (e) { $('#list').textContent = 'Error: ' + e.message; }
+}
+
+/* ---------- options dialog ---------- */
+const optEl = $('#optwrap');
+$('#bOpt').onclick = () => optEl.hidden = false;
+$('#ox').onclick = () => optEl.hidden = true;
+optEl.addEventListener('click', e => { if (e.target === optEl) optEl.hidden = true; });
+$('#oMax').innerHTML = [...Array(15).keys()].map(i => `<option${i === 14 ? ' selected' : ''}>${i}</option>`).join('');
+const MODES = '<option value="WALK">Walking</option><option value="BIKE">Cycling</option><option value="CAR">Car</option>';
+['#oPre','#oPost','#oDir'].forEach(id => { $(id).innerHTML = MODES; });
+const fillTime = (id, def) => { $(id).innerHTML = [5,10,15,20,30,45,60].map(m => `<option value="${m*60}"${m === def ? ' selected' : ''}>${m} min</option>`).join(''); };
+fillTime('#oPreT', 15); fillTime('#oPostT', 15); fillTime('#oDirT', 30);
+
+function updateSliderTrack(el) {
+  const pct = ((el.value - el.min) / (el.max - el.min)) * 100;
+  const isLight = document.documentElement.classList.contains('light');
+  const activeColor = isLight ? '#111113' : '#ffffff';
+  const trackColor = isLight ? '#d4d4dc' : '#26262a';
+  const fill = el.disabled ? '#71717a' : activeColor;
+  el.style.background = `linear-gradient(to right, ${fill} 0%, ${fill} ${pct}%, ${trackColor} ${pct}%, ${trackColor} 100%)`;
+}
+function updateAllSliders() {
+  ['#oPed', '#oBike'].forEach(id => { if ($(id)) updateSliderTrack($(id)); });
+}
+
+const touchedSpeed = {};
+for (const [id, key] of [['#oPed','ped'], ['#oBike','bike']]) {
+  const el = $(id);
+  el.addEventListener('input', () => {
+    touchedSpeed[key] = true;
+    $(id + 'V').textContent = (+el.value).toFixed(1) + ' km/h';
+    updateSliderTrack(el);
+  });
+  updateSliderTrack(el);
+}
+
+function syncBike() {
+  const bike = ['#oPre','#oPost','#oDir'].some(id => $(id).value === 'BIKE');
+  $('#oBike').disabled = !bike;
+  $('#oElev').disabled = !bike;
+  updateSliderTrack($('#oBike'));
+}
+['#oPre','#oPost','#oDir'].forEach(id => $(id).addEventListener('change', syncBike));
+syncBike();
+
+$('#addVia').onclick = () => {
+  const box = $('#vias'); if (box.children.length >= 2) return;
+  const id = box.querySelector('#via1') ? 'via2' : 'via1';
+  const row = document.createElement('div'); row.className = 'pick'; row.id = id;
+  row.innerHTML = '<input placeholder="Via stop" autocomplete="off"><ul></ul><button class="vx" type="button" title="Remove">✕</button>';
+  row.querySelector('.vx').onclick = () => { delete chosen[id]; row.remove(); $('#addVia').disabled = false; };
+  box.appendChild(row); picker(id);
+  $('#addVia').disabled = box.children.length >= 2;
+};
+
+function optParams() {
+  const p = {}, v = id => $(id).value;
+  if (v('#oMode')) p.transitModes = v('#oMode');
+  if ($('#oRouted').checked) p.useRoutedTransfers = true;
+  if ($('#oWheel').checked) p.pedestrianProfile = 'WHEELCHAIR';
+  if ($('#oBikeC').checked) p.requireBikeTransport = true;
+  if ($('#oCarC').checked) p.requireCarTransport = true;
+  if ($('#oNoRes').checked) p.noCompulsoryReservation = true;
+  if (v('#oMax') !== '14') p.maxTransfers = v('#oMax');
+  if (v('#oAdd')) p.additionalTransferTime = v('#oAdd');
+  if (v('#oPre') !== 'WALK') p.preTransitModes = v('#oPre');
+  if (v('#oPost') !== 'WALK') p.postTransitModes = v('#oPost');
+  if (v('#oDir') !== 'WALK') p.directModes = v('#oDir');
+  if (v('#oPreT') !== '900') p.maxPreTransitTime = v('#oPreT');
+  if (v('#oPostT') !== '900') p.maxPostTransitTime = v('#oPostT');
+  if (v('#oDirT') !== '1800') p.maxDirectTime = v('#oDirT');
+  if (touchedSpeed.ped) p.pedestrianSpeed = (v('#oPed') / 3.6).toFixed(2);
+  if (touchedSpeed.bike) p.cyclingSpeed = (v('#oBike') / 3.6).toFixed(2);
+  if (!$('#oElev').disabled && v('#oElev') !== 'NONE') p.elevationCosts = v('#oElev');
+  const via = [chosen.via1, chosen.via2].filter(Boolean).map(x => x.id);
+  if (via.length) p.via = via.join(',');
+  return p;
+}
+
+/* ---------- journey details card ---------- */
+const plat = p => p.track ? `<span class="plat">Pl. ${esc(p.track)}</span>` : '';
+function legHTML(l) {
+  if (l.mode === 'WALK') return `<div class="walk">🚶 Walk to ${esc(l.to.name)} · ${Math.max(1, Math.round(l.duration/60))} min</div>`;
+  const mid = l.intermediateStops || [], dur = Math.round((new Date(l.endTime) - new Date(l.startTime)) / 60000);
+  const dl = dmin(l.from.departure, l.from.scheduledDeparture), dr = dmin(l.to.arrival, l.to.scheduledArrival);
+  const url = /^https?:\/\//.test(l.agencyUrl || '') ? l.agencyUrl : null;
+  return `<div class="leg" style="--c:${colr(l)}" data-trip="${esc(l.tripId)}" data-board="${esc(l.from.stopId)}">
+    <div class="rail"></div>
+    <div class="badge" title="Track this vehicle">${BUS}${esc(l.displayName || l.routeShortName || '')}</div>
+    <div class="row"><b>${fmt(l.from.departure)}</b>${lateTag(dl, l.realTime)}<span class="nm">${esc(l.from.name)}</span>${plat(l.from)}</div>
+    <div class="sub">→ ${esc(l.headsign || '')}</div>
+    ${l.agencyName ? (url ? `<a class="op" href="${esc(url)}" target="_blank" rel="noopener">↗ ${esc(l.agencyName)}</a>` : `<div class="sub">${esc(l.agencyName)}</div>`) : ''}
+    ${mid.length ? `<button class="ex">▾ ${mid.length} intermediate stops (${dur} min)</button>
+      <ul class="mid" hidden>${mid.map(p => `<li><b>${fmt(p.departure || p.arrival)}</b>${lateTag(dmin(p.departure || p.arrival, p.scheduledDeparture || p.scheduledArrival), l.realTime)} ${esc(p.name)}</li>`).join('')}</ul>` : ''}
+    <div class="row end"><b>${fmt(l.to.arrival)}</b>${lateTag(dr, l.realTime)}<span class="nm">${esc(l.to.name)}</span>${plat(l.to)}</div>
+  </div>`;
+}
+
+let currentLegs = null;
+function showJourney(legs, boardId) {
+  setCollapsed(false);
+  stopTracking(); currentLegs = legs; draw(legs, true); map.removeLayer(live.group);
+  $('#journey').hidden = false;
+  $('#jdate').textContent = new Date(legs[0].startTime || legs[0].from.departure).toLocaleDateString('en-GB', {timeZone:'Europe/Bratislava'});
+  $('#detail').innerHTML = legs.map(legHTML).join('');
+  const f = legs.find(l => l.mode !== 'WALK' && l.tripId);
+  if (f) track(f.tripId, boardId || f.from.stopId);
+}
+$('#detail').addEventListener('click', e => {
+  const ex = e.target.closest('.ex');
+  if (ex) { const ul = ex.nextElementSibling; ul.hidden = !ul.hidden; ex.textContent = ex.textContent.replace(ul.hidden ? '▴' : '▾', ul.hidden ? '▾' : '▴'); return; }
+  const b = e.target.closest('.badge');
+  if (b) { const lg = b.closest('.leg'); track(lg.dataset.trip, lg.dataset.board); }
+});
+$('#jx').onclick = () => { $('#journey').hidden = true; stopTracking(); layer.clearLayers(); busMarker = null; currentLegs = null; if (live.on) { map.addLayer(live.group); startLive(); } };
+$('#jref').onclick = () => { if (trk) refresh(trk.tripId, trk.boardId).catch(() => {}); };
+
+/* ---------- tracking one trip (pauses when tab is hidden) ---------- */
+let timer = null, tick = null, cur = null, trk = null, lastLate = false;
+function stopTracking() {
+  clearInterval(timer); clearInterval(tick); timer = tick = null; cur = null; trk = null;
+  if (busMarker) { layer.removeLayer(busMarker); busMarker = null; }
+  $('#warn').className = ''; $('#warn').textContent = '';
+}
+function startTrackLoops() {
+  clearInterval(timer); clearInterval(tick);
+  if (!trk || document.hidden) return;
+  const run = () => refresh(trk.tripId, trk.boardId).catch(e => { $('#warn').className = 'info'; $('#warn').textContent = 'Update failed: ' + e.message; });
+  run();
+  timer = setInterval(run, 30000);
+  tick = setInterval(placeBus, 1000);
+}
+function track(tripId, boardId) {
+  stopTracking(); lastLate = false; trk = {tripId, boardId};
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  startTrackLoops();
+}
+async function refresh(tripId, boardId) {
+  const it = await api('/v6/trip', {tripId});
+  const leg = it.legs.find(l => l.mode !== 'WALK') || it.legs[0];
+  const stops = [leg.from, ...(leg.intermediateStops || []), leg.to];
+  const line = leg.legGeometry ? decode(leg.legGeometry.points, leg.legGeometry.precision ?? 6) : stops.map(s => [s.lat, s.lon]);
+  const c = cumul(line);
+  let prev = 0;
+  const idx = stops.map(s => {
+    let best = prev, bd = Infinity;
+    for (let i = prev; i < line.length; i++) { const d = dist(line[i], [s.lat, s.lon]); if (d < bd) { bd = d; best = i; } }
+    prev = best; return best;
+  });
+  cur = {leg, stops, line, c, idx, boardId};
+  updateWarn(); placeBus();
+}
+function locate() {
+  const {stops, line, c, idx} = cur, now = new Date();
+  if (now < T(stops[0], 'departure')) return {s: 'Not departed yet.'};
+  if (now > T(stops.at(-1), 'arrival')) return {s: 'Trip finished.'};
+  for (let i = 0; i < stops.length; i++) {
+    const a = T(stops[i], 'arrival'), d = T(stops[i], 'departure');
+    if (now >= a && now <= d) return {pos: line[idx[i]], s: 'At ' + stops[i].name};
+    if (i < stops.length - 1) {
+      const a2 = T(stops[i+1], 'arrival');
+      if (now > d && now < a2) {
+        const f = (now - d) / (a2 - d);
+        return {pos: atDist(line, c, c[idx[i]] + (c[idx[i+1]] - c[idx[i]]) * f), s: `Between ${stops[i].name} and ${stops[i+1].name}`};
+      }
+    }
+  }
+  return {s: ''};
+}
+function placeBus() {
+  if (!cur) return;
+  const {pos, s} = locate();
+  const st = $('#st'); if (st) st.textContent = s;
+  if (busMarker && !layer.hasLayer(busMarker)) busMarker = null;
+  if (!pos) { if (busMarker) { layer.removeLayer(busMarker); busMarker = null; } return; }
+  if (!busMarker) busMarker = L.marker(pos, {icon: htmlIcon(`<div class="veh big" style="--c:${colr(cur.leg)}">${BUS}</div>`), zIndexOffset: 1000}).addTo(layer);
+  else busMarker.setLatLng(pos);
+  if (cur.last && dist(cur.last, pos) > 1) { const svg = busMarker.getElement()?.querySelector('svg'); if (svg) svg.style.transform = bearing(cur.last, pos) < 0 ? 'scaleX(-1)' : ''; }
+  cur.last = pos;
+}
+function updateWarn() {
+  const {leg, stops, boardId} = cur, now = new Date(), w = $('#warn');
+  const bi = Math.max(0, stops.findIndex(s => s.stopId === boardId));
+  const ref = now > T(stops[bi], 'departure') ? (stops.find(s => T(s, 'arrival') > now) || stops.at(-1)) : stops[bi];
+  const real = ref.departure || ref.arrival, sch = ref.scheduledDeparture || ref.scheduledArrival;
+  const d = dmin(real, sch), name = esc(leg.displayName || leg.routeShortName);
+  if (!leg.realTime) {
+    w.className = 'info'; w.innerHTML = `⏱ ${name}: no live data, timetable only.<br><span id="st"></span>`;
+  } else if (d >= LATE_MIN) {
+    w.className = 'bad';
+    w.innerHTML = `⚠️ ${name} is <b>${d} min late</b> at ${esc(ref.name)}: now ${fmt(real)} (scheduled ${fmt(sch)}).<br><span id="st"></span>`;
+    if (!lastLate && 'Notification' in window && Notification.permission === 'granted')
+      new Notification(`${name} is ${d} min late`, {body: `${ref.name}: now ${fmt(real)}`});
+    lastLate = true;
+  } else {
+    w.className = 'good'; w.innerHTML = `✅ ${name} on time at ${esc(ref.name)} (${fmt(real)}).<br><span id="st"></span>`;
+    lastLate = false;
+  }
+}
+
+/* ---------- all vehicles moving on the map (pauses when tab is hidden) ---------- */
+const live = {on:true, segs:new Map(), group:L.layerGroup().addTo(map), swap:false, tried:false, t1:null, t2:null, deb:null};
+function clearLive() { live.group.clearLayers(); live.segs.clear(); }
+
+async function loadLive() {
+  if (!live.on || currentLegs || document.hidden) return;
+  const z = map.getZoom(), msg = $('#livemsg');
+  if (z < 12) { msg.textContent = 'zoom in for vehicles'; clearLive(); return; }
+  msg.textContent = '';
+  const b = map.getBounds(), now = new Date();
+  const q = swap => ({
+    zoom: z, precision: 6,
+    min: swap ? `${b.getSouth()},${b.getEast()}` : `${b.getSouth()},${b.getWest()}`,
+    max: swap ? `${b.getNorth()},${b.getWest()}` : `${b.getNorth()},${b.getEast()}`,
+    startTime: now.toISOString(), endTime: new Date(+now + 60000).toISOString()
+  });
+  let r = await api('/v6/map/trips', q(live.swap));
+  if (!r.length && !live.tried) {
+    live.tried = true;
+    const r2 = await api('/v6/map/trips', q(!live.swap));
+    if (r2.length) { r = r2; live.swap = !live.swap; }
+  }
+  const keep = new Set();
+  for (const s of r) {
+    if (!s.polyline) continue;
+    const t = s.trips?.[0] || {}, key = (t.tripId || '') + s.departure;
+    keep.add(key);
+    if (live.segs.has(key)) continue;
+    const line = decode(s.polyline, 6), label = t.displayName || t.routeShortName || '';
+    const dl = s.realTime ? dmin(s.departure, s.scheduledDeparture) : 0;
+    const col = s.routeColor ? '#' + s.routeColor : hashCol(label);
+    const m = L.marker(line[0], {icon: htmlIcon(`<div class="veh${dl >= LATE_MIN ? ' lt' : ''}${s.realTime ? '' : ' tt'}" style="--c:${col}">${BUS}</div>`)})
+      .bindTooltip(esc(label) + (dl >= 1 ? ` · +${dl} min` : ''), {direction:'top', offset:[0,-8]}).addTo(live.group);
+    m.on('click', () => t.tripId && api('/v6/trip', {tripId: t.tripId}).then(it => showJourney(it.legs)).catch(() => {}));
+    live.segs.set(key, {m, line, c: cumul(line), dep: new Date(s.departure), arr: new Date(s.arrival)});
+  }
+  for (const [k, v] of live.segs) if (!keep.has(k)) { live.group.removeLayer(v.m); live.segs.delete(k); }
+  animateLive();
+}
+function animateLive() {
+  if (document.hidden) return;
+  const now = new Date();
+  for (const v of live.segs.values()) {
+    const el = v.m.getElement(); if (!el) continue;
+    const f = (now - v.dep) / ((v.arr - v.dep) || 1);
+    if (f < 0 || f > 1) { el.style.display = 'none'; continue; }
+    el.style.display = '';
+    const len = v.c[v.c.length-1], p = atDist(v.line, v.c, len * f), p2 = atDist(v.line, v.c, len * Math.min(1, f + 0.02));
+    v.m.setLatLng(p);
+    if (p2[0] !== p[0] || p2[1] !== p[1]) el.querySelector('svg').style.transform = bearing(p, p2) < 0 ? 'scaleX(-1)' : '';
+  }
+}
+$('#livebtn').insertAdjacentHTML('afterbegin', BUS);
+const goLive = () => loadLive().catch(err => $('#livemsg').textContent = 'live failed: ' + err.message);
+function pauseLive() { clearInterval(live.t1); clearInterval(live.t2); }
+function startLive() {
+  pauseLive();
+  if (!live.on || document.hidden || currentLegs) return;
+  goLive();
+  live.t1 = setInterval(goLive, 30000);
+  live.t2 = setInterval(animateLive, 1000);
+}
+$('#livebtn').onclick = () => {
+  live.on = !live.on; $('#livebtn').classList.toggle('on', live.on);
+  if (live.on && !currentLegs) map.addLayer(live.group);
+  pauseLive();
+  if (live.on) startLive(); else { clearLive(); $('#livemsg').textContent = ''; }
+};
+map.on('moveend', () => { if (!live.on || document.hidden) return; clearTimeout(live.deb); live.deb = setTimeout(goLive, 600); });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    pauseLive();
+    clearInterval(timer); clearInterval(tick);
+  } else {
+    if (trk) startTrackLoops();
+    if (live.on && !currentLegs) startLive();
+  }
+});
+
+startLive();
+</script>
+</body>
+</html>
