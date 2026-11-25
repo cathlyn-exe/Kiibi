@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Bratislava & Šamorín Transit</title>
+<title>Kiibi — Bratislava & Šamorín Transit</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'">
 <style>
 :root{
@@ -259,7 +259,7 @@ html.light .tsw::after{transform:translateX(16px);background:#fff}
 /* Mobile Sheet Toggle Handle (Hidden on Desktop) */
 #sheetBar{display:none}
 
-/* Required Attribution & Compliance Footer (Visible on Desktop & Mobile) */
+/* Required Attribution & Compliance Footer */
 #foot{
   pointer-events:auto;
   position:fixed;
@@ -527,8 +527,8 @@ input[type=range]:disabled::-moz-range-thumb{background:#71717a}
 <div id="foot">
   © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ·
   Data: <a href="https://transitous.org/sources/" target="_blank" rel="noopener">Transitous</a> (<a href="https://transitous.org/donate/" target="_blank" rel="noopener">Donate</a>) ·
-  <a href="https://github.com/healthyhuman-uk/transit" target="_blank" rel="noopener">Source</a> ·
-  <a href="mailto:transit@healthyhuman.uk">Contact</a>
+  <a href="https://github.com/cathlyn-exe/Kiibi" target="_blank" rel="noopener">Source</a> ·
+  <a href="mailto:cathlyn@tutamail.com">Contact</a>
   <span class="hide-mob"> · positions estimated from timetable + delays, not GPS</span>
 </div>
 
@@ -575,7 +575,7 @@ if (typeof L === 'undefined') {
 }
 </script>
 <script>
-// Point this to your Cloudflare Worker route (e.g. 'https://healthyhuman.uk/transit-api') once deployed
+// Point this to 'https://kiibi.fyi/transit-api' once you deploy worker.js on Cloudflare
 const API = 'https://api.transitous.org/api';
 const BIAS = '48.10,17.20';
 const LATE_MIN = 3;
@@ -633,7 +633,7 @@ const SUN_SVG = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 
 
 function applyTheme(isLight) {
   document.documentElement.classList.toggle('light', isLight);
-  localStorage.setItem('transit-theme', isLight ? 'light' : 'dark');
+  localStorage.setItem('kiibi-theme', isLight ? 'light' : 'dark');
   const tileEl = tileLayer.getContainer();
   if (tileEl) tileEl.classList.toggle('dark-osm-tiles', !isLight);
   tileLayer.options.className = isLight ? '' : 'dark-osm-tiles';
@@ -642,7 +642,7 @@ function applyTheme(isLight) {
   if (typeof updateAllSliders === 'function') updateAllSliders();
 }
 
-if (localStorage.getItem('transit-theme') === 'light') applyTheme(true);
+if (localStorage.getItem('kiibi-theme') === 'light') applyTheme(true);
 
 window.addEventListener('load', () => map.invalidateSize());
 window.addEventListener('resize', () => map.invalidateSize());
